@@ -33,9 +33,35 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/public', publicRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Status Page API is running',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      services: '/api/services',
+      incidents: '/api/incidents',
+      public: '/api/public',
+      health: '/health'
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
+});
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ 
+    status: 'error', 
+    message: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
 });
 
 // Socket.io connection handling
@@ -86,8 +112,9 @@ app.locals.emitServiceUpdate = emitServiceUpdate;
 app.locals.emitIncidentUpdate = emitIncidentUpdate;
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
