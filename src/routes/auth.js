@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User_records = require('../models/User');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -14,15 +14,17 @@ router.post('/register', async (req, res) => {
     if (!email || !password || !name) {
       return res.status(400).json({ message: 'Please provide email, password, and name' });
     }
-
+    console.log(email, password, name);
     // Check if user exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User_records.findOne({ email });
+    const alluser = await User_records.find();
+    console.log(alluser);
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'User_records already exists' });
     }
 
     // Create user
-    const user = new User({ email, password, name });
+    const user = new User_records({ email, password, name });
     await user.save();
 
     // Generate token
@@ -49,20 +51,24 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
+    console.log("yoo", req.body);
     // Validation
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
     // Find user
-    const user = await User.findOne({ email });
+    console.log(email);
+    const user = await User_records.findOne({ email });
+    console.log(user);
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-
+    console.log(user.comparePassword(password));
     // Check password
     const isMatch = await user.comparePassword(password);
+
+    console.log("isMatch", isMatch);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
