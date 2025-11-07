@@ -1,7 +1,13 @@
 const express = require('express');
 const Incident = require('../models/Incident');
 const Service = require('../models/Service');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
+const {
+  sendIncidentCreatedEmail,
+  sendIncidentUpdatedEmail,
+  sendIncidentResolvedEmail,
+} = require('../services/email');
 
 const router = express.Router();
 
@@ -43,6 +49,21 @@ router.post('/', auth, async (req, res) => {
     await incident.save();
     await incident.populate('serviceId', 'name description');
     
+    // Get user details for email
+    const user = await User.findById(req.user._id);
+    
+    // Send email notification asynchronously (don't block API response)
+    if (user && user.email) {
+      sendIncidentCreatedEmail(
+        incident,
+        service.name,
+        user.email,
+        user.name
+      ).catch(err => {
+        console.error('Failed to send incident created email:', err);
+      });
+    }
+    
     // Emit Socket.io event
     if (req.app.locals.emitIncidentUpdate) {
       req.app.locals.emitIncidentUpdate(incident.userId.toString(), incident);
@@ -64,6 +85,8 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Incident not found' });
     }
 
+    const oldStatus = incident.status;
+    
     if (title) incident.title = title;
     if (message) incident.message = message;
     if (status) {
@@ -75,6 +98,36 @@ router.put('/:id', auth, async (req, res) => {
 
     await incident.save();
     await incident.populate('serviceId', 'name description');
+    
+    // Get user and service details for email
+    const user = await User.findById(req.user._id);
+    const service = await Service.findById(incident.serviceId._id || incident.serviceId);
+    
+    // Send email notification if status changed
+    if (user && user.email && status && oldStatus !== incident.status) {
+      // Send resolved email if status changed to resolved
+      if (incident.status === 'resolved') {
+        sendIncidentResolvedEmail(
+          incident,
+          service.name,
+          user.email,
+          user.name
+        ).catch(err => {
+          console.error('Failed to send incident resolved email:', err);
+        });
+      } else {
+        // Send update email for other status changes
+        sendIncidentUpdatedEmail(
+          incident,
+          service.name,
+          user.email,
+          user.name,
+          oldStatus
+        ).catch(err => {
+          console.error('Failed to send incident updated email:', err);
+        });
+      }
+    }
     
     // Emit Socket.io event
     if (req.app.locals.emitIncidentUpdate) {

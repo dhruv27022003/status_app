@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const User_records = require('../models/User');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -16,15 +16,15 @@ router.post('/register', async (req, res) => {
     }
     console.log(email, password, name);
     // Check if user exists
-    const existingUser = await User_records.findOne({ email });
-    const alluser = await User_records.find();
+    const existingUser = await User.findOne({ email });
+    const alluser = await User.find();
     console.log(alluser);
     if (existingUser) {
-      return res.status(400).json({ message: 'User_records already exists' });
+      return res.status(400).json({ message: 'User already exists' });
     }
 
     // Create user
-    const user = new User_records({ email, password, name });
+    const user = new User({ email, password, name });
     await user.save();
 
     // Generate token
@@ -59,7 +59,7 @@ router.post('/login', async (req, res) => {
 
     // Find user
     console.log(email);
-    const user = await User_records.findOne({ email });
+    const user = await User.findOne({ email });
     console.log(user);
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
